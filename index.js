@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-
+import asyncPool from "tiny-async-pool";
 import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
 
 (async () => {
@@ -12,7 +12,6 @@ import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
   const page = await browser.newPage();
   let targetURL = "https://blog.csdn.net/u010263423/category_9162796.html";
   page.on("dialog", async (dialog) => {
-    console.log("here");
     await dialog.accept();
   });
   await page.goto(targetURL);
@@ -20,7 +19,6 @@ import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
   const targetPageCount = await getPage(page);
   const willOpenArr = await waitingOpenURL(targetPageCount, targetURL);
   const findArray = [];
-  console.log("willOpenArr:>>", willOpenArr);
   findArray.push(...(await findElement(page)));
   if (targetPageCount > 1) {
     for (let i = 0; i < willOpenArr.length; i++) {
@@ -28,36 +26,23 @@ import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
       findArray.push(...(await findElement(page)));
     }
   }
-  console.log(findArray);
-  for (let i = 0; i < findArray.length; i++) {
-    const eachID = findArray[i]["id"];
-    targetURL = `https://editor.csdn.net/md/?articleId=${eachID}`;
-    await page.goto(targetURL, { timeout: 10000, waitUntil: "load" });
-    await clickImport(page);
+
+  const baseWriteURL = `https://editor.csdn.net/md/?articleId=`;
+  const baseWriteURLArray = findArray.map((i) => `${baseWriteURL}${i.id}`);
+  let successHandle = 0;
+  const handleURL = (url) =>
+    new Promise(async (resolve) => {
+      const page = await browser.newPage();
+      page.on("dialog", async (dialog) => {
+        await dialog.accept();
+      });
+      await page.goto(url);
+      await clickImport(page);
+      await page.close();
+      resolve(`${url} 解析完成 ${++successHandle}`);
+    });
+
+  for await (const ms of asyncPool(2, baseWriteURLArray, handleURL)) {
+    console.log(ms);
   }
-  // 点击每个标题
-
-  //   const linksTitle = await listElement.$$(".title");
-  //   const linksDate = await listElement.$$(".column_article_data>.status");
-
-  //   const titles = await linksTitle.$$eval('.title', element => element.map(i => i.innerHTML));
-  //   console.log(titles);
-  //   // Type into search box
-  //   await page.type(".devsite-search-field", "automate beyond recorder");
-
-  //   // Wait and click on first result
-  //   const searchResultSelector = ".devsite-result-item-link";
-  //   await page.waitForSelector(searchResultSelector);
-  //   await page.click(searchResultSelector);
-
-  //   // Locate the full title with a unique string
-  //   const textSelector = await page.waitForSelector(
-  //     "text/Customize and automate"
-  //   );
-  //   const fullTitle = await textSelector?.evaluate((el) => el.textContent);
-
-  //   // Print the full title
-  //   console.log('The title of this blog post is "%s".', fullTitle);
-
-  //   await browser.close();
 })();

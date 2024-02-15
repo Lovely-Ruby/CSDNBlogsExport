@@ -92,16 +92,25 @@ export async function findElement(page) {
  * @param {*} page
  */
 export async function clickImport(page) {
-  await new Promise((r) => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 1500));
   const importButton =
     "div.layout__panel.layout__panel--navigation-bar.clearfix > nav > div.scroll-box > div:nth-child(1) > div:nth-child(22) > button";
   await page.waitForSelector(importButton);
   await page.click(importButton);
-  await new Promise((r) => setTimeout(r, 800));
+  // await new Promise((r) => setTimeout(r, 500));
 
   const nextImportButton =
     "div.side-bar__inner > div.side-bar__panel.side-bar__panel--menu > a:nth-child(1)";
   await page.waitForSelector(nextImportButton);
   await page.click(nextImportButton);
-  await new Promise((r) => setTimeout(r, 800));
+  // 这个时间是不能省的，一定要给点击事件留点时间，
+  // 不然直接跳转页面，下载就失效了
+  await new Promise((r) => setTimeout(r, 500));
+}
+
+export function handleWriteURLs(url) {
+  return new Promise((resolve) => {
+    console.log(url);
+    resolve();
+  });
 }
