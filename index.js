@@ -4,16 +4,16 @@ import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
 
 (async () => {
   // 关闭无头模式，显示浏览器窗口
-  // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录了
+  // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
   const browser = await puppeteer.launch({
     headless: false,
     userDataDir: "./userData",
   });
   const page = await browser.newPage();
-  let targetURL = "https://blog.csdn.net/u010263423/category_9162796.html";
   page.on("dialog", async (dialog) => {
     await dialog.accept();
   });
+  let targetURL = "https://blog.csdn.net/u010263423/category_9162796.html";
   await page.goto(targetURL);
   await page.setViewport({ width: 1080, height: 1024 });
   const targetPageCount = await getPage(page);
@@ -30,8 +30,8 @@ import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
   const baseWriteURL = `https://editor.csdn.net/md/?articleId=`;
   const baseWriteURLArray = findArray.map((i) => `${baseWriteURL}${i.id}`);
   let successHandle = 0;
-  const handleURL = (url) =>
-    new Promise(async (resolve) => {
+  function handleURL(url) {
+    return new Promise(async (resolve) => {
       const page = await browser.newPage();
       page.on("dialog", async (dialog) => {
         await dialog.accept();
@@ -39,10 +39,13 @@ import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
       await page.goto(url);
       await clickImport(page);
       await page.close();
+      await new Promise((r) => setTimeout(r, 300));
       resolve(`${url} 解析完成 ${++successHandle}`);
     });
-
+  }
   for await (const ms of asyncPool(2, baseWriteURLArray, handleURL)) {
     console.log(ms);
   }
+
+  console.log("***已完成所有解析***");
 })();
