@@ -1,6 +1,3 @@
-import path from "path";
-const __dirname = path.resolve(path.dirname(""));
-const myDownloadPath = `${__dirname}\\my-post`;
 /**
  * 功能：获取文章标题
  * @param {*} lis
@@ -99,7 +96,7 @@ export async function clickImport(page) {
     "div.layout__panel.layout__panel--navigation-bar.clearfix > nav > div.scroll-box > div:nth-child(1) > div:nth-child(22) > button";
   await page.waitForSelector(exportButton);
   await page.click(exportButton);
-  // await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 1000));
 
   const nextExportButton =
     "div.side-bar__inner > div.side-bar__panel.side-bar__panel--menu > a:nth-child(1)";
@@ -107,7 +104,7 @@ export async function clickImport(page) {
   await page.click(nextExportButton);
   // 这个时间是不能省的，一定要给点击事件留点时间，
   // 不然直接跳转页面，下载就失效了
-  await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 1000));
 }
 
 export function handleWriteURLs(url) {

@@ -1,8 +1,8 @@
+import path from "path";
 import puppeteer from "puppeteer";
 import asyncPool from "tiny-async-pool";
 import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
 
-import path from "path";
 const __dirname = path.resolve(path.dirname(""));
 const myDownloadPath = `${__dirname}\\my-post`;
 
@@ -10,7 +10,7 @@ const myDownloadPath = `${__dirname}\\my-post`;
   // 关闭无头模式，显示浏览器窗口
   // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
   const browser = await puppeteer.launch({
-    // headless: false,
+    headless: false,
     userDataDir: "./userData",
   });
   const page = await browser.newPage();
@@ -36,6 +36,7 @@ const myDownloadPath = `${__dirname}\\my-post`;
   let successHandle = 0;
   async function handleURL(url) {
     const page = await browser.newPage();
+    // 我能想到的就是，尽早设置这个玩意儿
     const client = await page.createCDPSession();
     await client.send("Page.setDownloadBehavior", {
       behavior: "allow",
@@ -44,12 +45,10 @@ const myDownloadPath = `${__dirname}\\my-post`;
     page.on("dialog", async (dialog) => {
       await dialog.accept();
     });
-    // 这个Promise就不影响，为什么？？？
-    // await new Promise((r) => setTimeout(r, 1000));
+    // 这个 Promise 就不影响，为什么？？？
+    await new Promise((r) => setTimeout(r, 2000));
     await page.goto(url);
     await clickImport(page);
-    await new Promise((r) => setTimeout(r, 300));
-
     await page.close();
     // 这个 new Promise 为什么会影响下载位置的设定？？？
     return `${url} 解析完成 ${++successHandle}`;
