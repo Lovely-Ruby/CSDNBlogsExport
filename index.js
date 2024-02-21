@@ -1,11 +1,16 @@
 import path from "path";
 import puppeteer from "puppeteer";
-import asyncPool from "tiny-async-pool";
-import { getPage, waitingOpenURL, findElement, clickImport } from "./tools.js";
+import {
+  getPage,
+  waitingOpenURL,
+  findElement,
+  clickImport,
+  asyncPool,
+} from "./tools.js";
 
 const __dirname = path.resolve(path.dirname(""));
 const myDownloadPath = `${__dirname}\\my-post`;
-
+const POOL_LIMIT = 3;
 (async () => {
   // 关闭无头模式，显示浏览器窗口
   // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
@@ -14,13 +19,23 @@ const myDownloadPath = `${__dirname}\\my-post`;
     userDataDir: "./userData",
   });
   const page = await browser.newPage();
+  const client = await page.createCDPSession();
+  await client.send("Page.setDownloadBehavior", {
+    behavior: "allow",
+    downloadPath: myDownloadPath,
+  });
   page.on("dialog", async (dialog) => {
     await dialog.accept();
   });
+  // let targetURL = "https://blog.csdn.net/u010263423/category_9468795.html";
+  // let targetURL = "https://blog.csdn.net/u010263423/category_9177228.html";
   let targetURL = "https://blog.csdn.net/u010263423/category_9162796.html";
   await page.goto(targetURL);
-  await page.setViewport({ width: 1080, height: 1024 });
+  // await page.setViewport({ width: 1080, height: 1024 });
   const targetPageCount = await getPage(page);
+  console.log(
+    `********** Notice: 此专栏共有 ${targetPageCount} 页，正在获取所有文章 id **********`
+  );
   const willOpenArr = await waitingOpenURL(targetPageCount, targetURL);
   const findArray = [];
   findArray.push(...(await findElement(page)));
@@ -30,32 +45,45 @@ const myDownloadPath = `${__dirname}\\my-post`;
       findArray.push(...(await findElement(page)));
     }
   }
+  const allProgress = findArray.length;
 
   const baseWriteURL = `https://editor.csdn.net/md/?articleId=`;
   const baseWriteURLArray = findArray.map((i) => `${baseWriteURL}${i.id}`);
   let successHandle = 0;
-  async function handleURL(url) {
-    const page = await browser.newPage();
-    // 我能想到的就是，尽早设置这个玩意儿
-    const client = await page.createCDPSession();
-    await client.send("Page.setDownloadBehavior", {
-      behavior: "allow",
-      downloadPath: myDownloadPath,
-    });
-    page.on("dialog", async (dialog) => {
-      await dialog.accept();
-    });
-    // 这个 Promise 就不影响，为什么？？？
-    await new Promise((r) => setTimeout(r, 2000));
-    await page.goto(url);
-    await clickImport(page);
-    await page.close();
-    // 这个 new Promise 为什么会影响下载位置的设定？？？
-    return `${url} 解析完成 ${++successHandle}`;
-  }
-  for await (const ms of asyncPool(2, baseWriteURLArray, handleURL)) {
-    console.log(ms);
-  }
+  console.log(
+    `********** Notice: 浏览器将最大并发保持 ${POOL_LIMIT} 个标签页工作. **********`
+  );
 
-  console.log("***已完成所有解析***");
+  function handleURL(url) {
+    return new Promise(async (resolve, reject) => {
+      const page = await browser.newPage();
+      const articleId = url.split("articleId=")[1] || "";
+      page.on("dialog", async (dialog) => {
+        await dialog.accept();
+      });
+      try {
+        await page.goto(url, {
+          waitUntil: "networkidle2",
+        });
+        await clickImport(page).then((res) => {
+          const currentProgress = String(++successHandle).padStart(2, 0);
+          console.log(
+            `[${currentProgress} / ${allProgress}] 导出完成. articleId: ${articleId}  `
+          );
+        });
+        await page.close();
+        resolve();
+      } catch (err) {
+        console.log(`${url} ${err}`);
+        await page.close();
+        reject();
+      } finally {
+      }
+    });
+  }
+  await asyncPool(3, baseWriteURLArray, handleURL);
+  console.log("Finished!!!: 已完成所有解析，即将关闭浏览器。");
+  // 防止最后一个文件下载失败，所以关闭之前给一些时间 io
+  await new Promise((r) => setTimeout(r, 5000));
+  await browser.close();
 })();

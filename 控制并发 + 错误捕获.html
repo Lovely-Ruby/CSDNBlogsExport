@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body></body>
+  <script>
+    const retry = (fn, times, item) => {
+      return new Promise((res, rej) => {
+        const attempt = () => {
+          fn()
+            .then(() => {
+              console.log(`${item}尝试成功`);
+              res(item);
+            })
+            .catch((error) => {
+              console.log(`第${times}次尝试`);
+              times-- > 0 ? attempt() : rej("机会用光了");
+            });
+        };
+        attempt();
+      });
+    };
+
+    // https://github.com/rxaviers/async-pool/blob/1.x/lib/es7.js
+    async function asyncPool(poolLimit, iterable, iteratorFn) {
+      const ret = [];
+      const executing = new Set();
+      for (let i = 0, len = iterable.length; i < len; i++) {
+        const item = iterable[i];
+        const p = Promise.resolve()
+          .then(() => iteratorFn(item))
+          .catch((err) => {
+            retry(() => iteratorFn(item), 3, item);
+          });
+        ret.push(p);
+        executing.add(p);
+        const clean = () => executing.delete(p);
+        p.then(clean).catch(clean);
+        if (executing.size >= poolLimit) {
+          await Promise.race(executing);
+        }
+      }
+      return Promise.all(ret);
+    }
+
+    // 并发可能是个网络请求，可能出错，所以在这里设置一个随机的错误
+    const timeout = (i) => {
+      console.log("开始" + i);
+      return new Promise((resolve, reject) => {
+        const randomNumber = Math.random() * 100;
+        setTimeout(() => {
+          if (randomNumber >= 50) {
+            console.log("成功结束" + i);
+            resolve(i);
+          } else {
+            console.log("失败结束" + i);
+            reject(i);
+          }
+        }, 1000 + Math.random() * 1000);
+      });
+    };
+
+    let urls = Array(10)
+      .fill(0)
+      .map((v, i) => i);
+    console.log(urls);
+
+    (async () => {
+      const res = await asyncPool(2, urls, timeout);
+      console.log(res);
+    })();
+  </script>
+</html>

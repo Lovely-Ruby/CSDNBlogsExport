@@ -1,3 +1,57 @@
+function retry(fn, times, item) {
+  const allTime = times;
+  const articleId = item.split("articleId=")[1] || "";
+  return new Promise((res, rej) => {
+    const attempt = () => {
+      const currTime = allTime - times + 1;
+      fn()
+        .then(() => {
+          console.log(
+            `Retry Success: 第 ${currTime} 次重试 ${articleId} 成功!`
+          );
+          res(item);
+        })
+        .catch((error) => {
+          console.log(`Warning: 第 ${currTime} 次重试 ${articleId} `);
+          if (times-- > 0) {
+            attempt();
+          } else {
+            console.log(
+              `Error:  已经重试 ${item} 文章 ${currTime} 次，机会已用光`
+            );
+            rej();
+          }
+        });
+    };
+    attempt();
+  });
+}
+
+// https://github.com/rxaviers/async-pool/blob/1.x/lib/es7.js
+export async function asyncPool(poolLimit, iterable, iteratorFn) {
+  const ret = [];
+  const executing = new Set();
+  for (let i = 0, len = iterable.length; i < len; i++) {
+    const item = iterable[i];
+    const articleId = item.split("articleId=")[1] || "";
+    const p = Promise.resolve()
+      .then(() => iteratorFn(item))
+      .catch(async (err) => {
+        console.log(`${articleId} 解析失败，即将重试`);
+        // 这里的 retry 也添加上 await
+        await retry(() => iteratorFn(item), 3, item).catch(() => {});
+      });
+    ret.push(p);
+    executing.add(p);
+    const clean = () => executing.delete(p);
+    p.then(clean).catch(clean);
+    if (executing.size >= poolLimit) {
+      await Promise.race(executing);
+    }
+  }
+  return Promise.all(ret);
+}
+
 /**
  * 功能：获取文章标题
  * @param {*} lis
@@ -47,7 +101,7 @@ export async function getPage(page) {
     });
     pageCount = Number(pageContext[pageContext.length - 3]);
   }
-  console.log(pageCount);
+
   return pageCount;
 }
 
@@ -65,8 +119,7 @@ export async function waitingOpenURL(targetPageCount, targetURL) {
 
 export async function findElement(page) {
   // 等待页面选择器的出现
-
-  await page.waitForSelector(".column_article_list");
+  await page.waitForSelector(".column_article_list", { timeout: 5000 });
   const lis = await page.$(".column_article_list");
 
   // 获取文章标题、写作时间、文章id
@@ -92,19 +145,26 @@ export async function findElement(page) {
  * @param {*} page
  */
 export async function clickImport(page) {
-  const exportButton =
-    "div.layout__panel.layout__panel--navigation-bar.clearfix > nav > div.scroll-box > div:nth-child(1) > div:nth-child(22) > button";
-  await page.waitForSelector(exportButton);
-  await page.click(exportButton);
-  await new Promise((r) => setTimeout(r, 1000));
+  return new Promise(async (resolve, reject) => {
+    try {
+      const exportButton =
+        "div.layout__panel.layout__panel--navigation-bar.clearfix > nav > div.scroll-box > div:nth-child(1) > div:nth-child(22) > button";
+      await page.waitForSelector(exportButton, { timeout: 5000 });
+      await page.click(exportButton);
+      // await new Promise((r) => setTimeout(r, 1000));
 
-  const nextExportButton =
-    "div.side-bar__inner > div.side-bar__panel.side-bar__panel--menu > a:nth-child(1)";
-  await page.waitForSelector(nextExportButton);
-  await page.click(nextExportButton);
-  // 这个时间是不能省的，一定要给点击事件留点时间，
-  // 不然直接跳转页面，下载就失效了
-  await new Promise((r) => setTimeout(r, 1000));
+      const nextExportButton =
+        "div.side-bar__inner > div.side-bar__panel.side-bar__panel--menu > a:nth-child(1)";
+      await page.waitForSelector(nextExportButton, { timeout: 5000 });
+      await page.click(nextExportButton);
+      // 这个时间是不能省的，一定要给点击事件留点时间，
+      // 不然直接跳转页面，下载就失效了
+      await new Promise((r) => setTimeout(r, 100));
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 export function handleWriteURLs(url) {

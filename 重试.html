@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body></body>
+  <script>
+    const retry = (fn, times) => {
+      return new Promise((res, rej) => {
+        const attempt = () => {
+          fn()
+            .then(res)
+            .catch((error) => {
+              times-- > 0 ? attempt() : rej("机会用光了");
+            });
+        };
+        attempt();
+      });
+    };
+
+    let getNum = function () {
+      console.log("函数执行一次");
+      return new Promise((res, rej) => {
+        let num = Math.random() * 10;
+        num < 2 ? res("数字小于2") : rej("数字大于2");
+      });
+    };
+    retry(getNum, 3)
+      .then((mes) => {
+        console.log(mes);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  </script>
+</html>
