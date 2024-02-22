@@ -1,6 +1,15 @@
 import fs from "fs-extra";
 import path from "path";
-import { removeDir } from "./modules.js";
+import { removeDir } from "./tools.js";
+
+const __dirname = path.resolve(path.dirname(""));
+const id2info = JSON.parse(
+  await fs.readFileSync(`${__dirname}\\id2info.json`, "utf-8")
+);
+const reg = /\@\[toc\]\(.*?\)|\@\[toc\]/i;
+const allArticles = Object.keys(id2info);
+
+const myArticlesPath = `${__dirname}\\my-articles`;
 
 const tags = `建站`;
 const handleReplaceContent = (articleId) => {
@@ -17,14 +26,6 @@ title: ${title}
 <meta name="referrer" content="no-referrer" />
 `;
 };
-
-const reg = /\@\[toc\]\(.*?\)|\@\[toc\]/i;
-const allArticles = Object.keys(id2info);
-const __dirname = path.resolve(path.dirname(""));
-const myArticlesPath = `${__dirname}\\my-articles`;
-const id2info = JSON.parse(
-  await fs.readFileSync(`${__dirname}\\id2info.json`, "utf-8")
-);
 
 try {
   /**

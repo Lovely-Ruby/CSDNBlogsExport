@@ -1,3 +1,4 @@
+import fs from "fs-extra";
 /**
  * 说明：csdn 中的导出，会将一些 windows 路径不允许存在的字符都变成 _
  * @param {*} s

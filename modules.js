@@ -1,5 +1,8 @@
 import fs from "fs";
 import path from "path";
+import readline from "readline";
+// const process = require("child_process");
+import { exec, spawn } from "node:child_process";
 import puppeteer from "puppeteer";
 import {
   strHandle,
@@ -151,6 +154,28 @@ export function initBrowser() {
     } catch (e) {
       console.log(e);
       reject(e);
+    }
+  });
+}
+
+export function handleHexoUseCmd() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  rl.question("是否立即处理成 hexo 文章? y/n：", (answer) => {
+    if (answer === "y") {
+      // 执行 npm run build 命令
+      exec("modify.cmd", (err, stdout, stderr) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+        console.log("处理完成");
+        rl.close();
+      });
+    } else {
+      rl.close();
     }
   });
 }

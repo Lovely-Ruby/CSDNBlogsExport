@@ -3,6 +3,7 @@ import {
   getInfo,
   exportInfo2Json,
   exportArticles,
+  handleHexoUseCmd,
 } from "./modules.js";
 
 const POOL_LIMIT = 3;
@@ -16,4 +17,5 @@ let targetURL = "https://blog.csdn.net/u010263423/category_9468795.html";
   await exportInfo2Json(findArray);
   await exportArticles({ browser, findArray, POOL_LIMIT });
   await browser.close();
+  handleHexoUseCmd();
 })();
