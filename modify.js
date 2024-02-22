@@ -1,6 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
-import { removeDir } from "./tools.js";
+import { removeDir } from "./modules.js";
 
 const tags = `建站`;
 const handleReplaceContent = (articleId) => {

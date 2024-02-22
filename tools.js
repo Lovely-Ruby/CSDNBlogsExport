@@ -1,35 +1,28 @@
-import { fileURLToPath } from "url";
-import fs from "fs-extra";
-import puppeteer from "puppeteer";
+/**
+ * 说明：csdn 中的导出，会将一些 windows 路径不允许存在的字符都变成 _
+ * @param {*} s
+ * @returns
+ */
+export function strHandle(s) {
+  const reg = /\/|\:|\?|\*/g;
+  return s.replace(reg, "_");
+}
 
-const dirname = fileURLToPath(import.meta.url);
-const myDownloadPath = `${dirname}\\my-articles`;
-
-
-export function initBrowser() {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // 关闭无头模式，显示浏览器窗口
-      // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
-      const browser = await puppeteer.launch({
-        headless: false,
-        userDataDir: "./userData",
-      });
-      const page = await browser.newPage();
-      const client = await page.createCDPSession();
-      await client.send("Page.setDownloadBehavior", {
-        behavior: "allow",
-        downloadPath: myDownloadPath,
-      });
-      page.on("dialog", async (dialog) => {
-        await dialog.accept();
-      });
-      resolve(page);
-    } catch (e) {
-      console.log(e);
-      reject(e);
-    }
-  });
+/**
+ * 功能：获取专栏页数
+ * @param {*} page
+ * @returns
+ */
+export async function getPage(page) {
+  const pageContainer = await page.$(".ui-paging-container");
+  let pageCount = 1;
+  if (pageContainer) {
+    const pageContext = await pageContainer.$$eval(".ui-pager", (elements) => {
+      return elements.map((e) => e.innerHTML);
+    });
+    pageCount = Number(pageContext[pageContext.length - 3]);
+  }
+  return pageCount;
 }
 
 /**
@@ -92,7 +85,14 @@ function retry(fn, times, item) {
   });
 }
 
-// https://github.com/rxaviers/async-pool/blob/1.x/lib/es7.js
+/**
+ * 功能：并发控制
+ * - 参考源码 https://github.com/rxaviers/async-pool/blob/1.x/lib/es7.js
+ * @param {*} poolLimit
+ * @param {*} iterable
+ * @param {*} iteratorFn
+ * @returns
+ */
 export async function asyncPool(poolLimit, iterable, iteratorFn) {
   const ret = [];
   const executing = new Set();
@@ -124,7 +124,7 @@ export async function asyncPool(poolLimit, iterable, iteratorFn) {
  * @param {*} lis
  * @returns
  */
-export async function getTitle(lis) {
+async function getTitle(lis) {
   const titles = await lis.$$eval(".title", (elements) => {
     return elements.map((e) =>
       e.innerHTML
@@ -143,7 +143,7 @@ export async function getTitle(lis) {
  * - nth-child 选择器从1开始，前面尽量是标签名吧，如果是类的话，我试了一下选择不到
  * @param {*} lis
  */
-export async function getDate(lis) {
+async function getDate(lis) {
   const titleDate = await lis.$$eval(
     ".column_article_data span:nth-child(2)",
     (elements) => {
@@ -153,24 +153,11 @@ export async function getDate(lis) {
   return titleDate;
 }
 
-export async function getID(lis) {
+async function getID(lis) {
   const titleId = await lis.$$eval("a", (elements) => {
     return elements.map((e) => e.href.split("details/")[1]);
   });
   return titleId;
-}
-
-export async function getPage(page) {
-  const pageContainer = await page.$(".ui-paging-container");
-  let pageCount = 1;
-  if (pageContainer) {
-    const pageContext = await pageContainer.$$eval(".ui-pager", (elements) => {
-      return elements.map((e) => e.innerHTML);
-    });
-    pageCount = Number(pageContext[pageContext.length - 3]);
-  }
-
-  return pageCount;
 }
 
 export async function waitingOpenURL(targetPageCount, targetURL) {
@@ -185,6 +172,11 @@ export async function waitingOpenURL(targetPageCount, targetURL) {
   return arr;
 }
 
+/**
+ * 功能：发现当前页面中的所有文章标题
+ * @param {*} page
+ * @returns
+ */
 export async function findElement(page) {
   // 等待页面选择器的出现
   await page.waitForSelector(".column_article_list", { timeout: 5000 });
@@ -235,9 +227,12 @@ export async function clickImport(page) {
   });
 }
 
-export function handleWriteURLs(url) {
-  return new Promise((resolve) => {
-    console.log(url);
-    resolve();
-  });
+/**
+ * 功能：把数字补齐2位
+ * @param {*} strOrNum
+ * @param {*} len
+ * @returns
+ */
+export function padStartCount(strOrNum, len = 2) {
+  return String(strOrNum).padStart(2, 0);
 }
