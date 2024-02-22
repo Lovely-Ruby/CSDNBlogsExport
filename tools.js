@@ -1,3 +1,68 @@
+import { fileURLToPath } from "url";
+import fs from "fs-extra";
+import puppeteer from "puppeteer";
+
+const dirname = fileURLToPath(import.meta.url);
+const myDownloadPath = `${dirname}\\my-articles`;
+
+
+export function initBrowser() {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // 关闭无头模式，显示浏览器窗口
+      // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
+      const browser = await puppeteer.launch({
+        headless: false,
+        userDataDir: "./userData",
+      });
+      const page = await browser.newPage();
+      const client = await page.createCDPSession();
+      await client.send("Page.setDownloadBehavior", {
+        behavior: "allow",
+        downloadPath: myDownloadPath,
+      });
+      page.on("dialog", async (dialog) => {
+        await dialog.accept();
+      });
+      resolve(page);
+    } catch (e) {
+      console.log(e);
+      reject(e);
+    }
+  });
+}
+
+/**
+ * 功能：删除非空文件夹
+ * @param {*} path
+ */
+export function removeDir(path) {
+  let data = fs.readdirSync(path);
+  for (let i = 0; i < data.length; i++) {
+    // 判断是文件或者是目录
+    // 文件：直接删除
+    // 目录：继续查找
+    let url = path + "/" + data[i];
+    let stat = fs.statSync(url);
+    if (stat.isDirectory()) {
+      // 继续查找,递归
+      removeDir(url);
+    } else {
+      // 文件删除
+      fs.unlinkSync(url);
+    }
+  }
+  // 删除空目录
+  fs.rmdirSync(path);
+}
+
+/**
+ * 功能：错误重试
+ * @param {*} fn
+ * @param {*} times
+ * @param {*} item
+ * @returns
+ */
 function retry(fn, times, item) {
   const allTime = times;
   const articleId = item.split("articleId=")[1] || "";

@@ -1,5 +1,5 @@
 import path from "path";
-import puppeteer from "puppeteer";
+
 import fs from "fs";
 import {
   getPage,
@@ -7,36 +7,42 @@ import {
   findElement,
   clickImport,
   asyncPool,
+  initBrowser,
 } from "./tools.js";
 
-const __dirname = path.resolve(path.dirname(""));
-const myDownloadPath = `${__dirname}\\my-articles`;
+// const myDownloadPath = `${__dirname}\\my-articles`;
 const POOL_LIMIT = 3;
 
+/**
+ * 说明：csdn 中的导出，会将一些 windows 路径不允许存在的字符都变成 _
+ * @param {*} s
+ * @returns
+ */
 function strHandle(s) {
-  const reg = /\//g;
-  return s.replace("*", "_").replace(reg, "_");
+  const reg = /\/|\:|\?|\*/g;
+  return s.replace(reg, "_");
 }
 
 (async () => {
   // 关闭无头模式，显示浏览器窗口
   // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
-  const browser = await puppeteer.launch({
-    headless: false,
-    userDataDir: "./userData",
-  });
-  const page = await browser.newPage();
-  const client = await page.createCDPSession();
-  await client.send("Page.setDownloadBehavior", {
-    behavior: "allow",
-    downloadPath: myDownloadPath,
-  });
-  page.on("dialog", async (dialog) => {
-    await dialog.accept();
-  });
-  // let targetURL = "https://blog.csdn.net/u010263423/category_9468795.html";
-  // let targetURL = "https://blog.csdn.net/u010263423/category_9177228.html";
-  let targetURL = "https://blog.csdn.net/u010263423/category_9162796.html";
+
+  const page = await initBrowser();
+
+  // const browser = await puppeteer.launch({
+  //   headless: false,
+  //   userDataDir: "./userData",
+  // });
+  // const page = await browser.newPage();
+  // const client = await page.createCDPSession();
+  // await client.send("Page.setDownloadBehavior", {
+  //   behavior: "allow",
+  //   downloadPath: myDownloadPath,
+  // });
+  // page.on("dialog", async (dialog) => {
+  //   await dialog.accept();
+  // });
+  let targetURL = "https://blog.csdn.net/u010263423/category_9468795.html"; // 【技术向】教程
   await page.goto(targetURL);
   // await page.setViewport({ width: 1080, height: 1024 });
   const targetPageCount = await getPage(page);
