@@ -1,8 +1,7 @@
 import fs from "fs";
 import path from "path";
 import readline from "readline";
-// const process = require("child_process");
-import { exec, spawn } from "node:child_process";
+import { exec } from "node:child_process";
 import puppeteer from "puppeteer";
 import {
   strHandle,
