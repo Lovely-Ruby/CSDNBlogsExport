@@ -54,6 +54,8 @@ export async function asyncPool(poolLimit, iterable, iteratorFn) {
 
 /**
  * 功能：获取文章标题
+ * - 网页上的 & 是被转译成 &amp; 了
+ * - 网页标题里有 * 的，导出的时候会被替换成 _，标题尽量不变，只是寻找文件的文件名改一下就好
  * @param {*} lis
  * @returns
  */
@@ -62,6 +64,7 @@ export async function getTitle(lis) {
     return elements.map((e) =>
       e.innerHTML
         .replace("\n", "")
+        .replace("&amp;", "&")
         .split("<!--####试读-->")[0]
         .replace("\n", "")
         .trim()

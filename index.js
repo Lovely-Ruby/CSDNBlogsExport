@@ -1,5 +1,6 @@
 import path from "path";
 import puppeteer from "puppeteer";
+import fs from "fs";
 import {
   getPage,
   waitingOpenURL,
@@ -9,8 +10,14 @@ import {
 } from "./tools.js";
 
 const __dirname = path.resolve(path.dirname(""));
-const myDownloadPath = `${__dirname}\\my-post`;
+const myDownloadPath = `${__dirname}\\my-articles`;
 const POOL_LIMIT = 3;
+
+function strHandle(s) {
+  const reg = /\//g;
+  return s.replace("*", "_").replace(reg, "_");
+}
+
 (async () => {
   // 关闭无头模式，显示浏览器窗口
   // userDataDir 表示把登录信息放到当前目录下，省着我们每次调用脚本都需要登录
@@ -38,6 +45,7 @@ const POOL_LIMIT = 3;
   );
   const willOpenArr = await waitingOpenURL(targetPageCount, targetURL);
   const findArray = [];
+
   findArray.push(...(await findElement(page)));
   if (targetPageCount > 1) {
     for (let i = 0; i < willOpenArr.length; i++) {
@@ -45,6 +53,22 @@ const POOL_LIMIT = 3;
       findArray.push(...(await findElement(page)));
     }
   }
+
+  const id2info = {};
+  for (let i of findArray) {
+    const obj = {
+      ...i,
+    };
+    const id = obj["id"];
+    const title = obj["title"];
+    obj.findPath = strHandle(title);
+    id2info[id] = obj;
+  }
+
+  fs.writeFileSync(`${__dirname}\\id2info.json`, JSON.stringify(id2info), {
+    flag: "w",
+  });
+
   const allProgress = findArray.length;
 
   const baseWriteURL = `https://editor.csdn.net/md/?articleId=`;
